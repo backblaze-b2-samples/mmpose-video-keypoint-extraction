@@ -18,7 +18,7 @@ PyPDF2>=3.0.0
 numpy>=1.26.0,<2.0.0
 # License-clean frame extraction for the seed script: resolves an ffmpeg binary
 # via imageio_ffmpeg.get_ffmpeg_exe(), so no system ffmpeg is required.
-imageio-ffmpeg>=0.5.0
+imageio-ffmpeg>=0.6.0
 
 # Dev / quality
 ruff>=0.8.0
