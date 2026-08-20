@@ -6,20 +6,23 @@ product
 
 ## Users
 
-AI coding agents and "vibe coders" (developers who lean on AI to move fast) who clone
-this kit as the foundation for a new full-stack app. Their context: they want to skip
-the boilerplate loop (dashboard, upload, file browser, cloud storage wiring) and go
-straight to building their app's unique features. They read the repo, keep the shared
-scaffolding, and rebrand + rewrite the dashboard for their own use case.
+Sports-science teams and fitness-app developers (and the AI coding agents helping them)
+who need to turn large video libraries — match footage, gym sessions, motion capture —
+into pose-keypoint datasets. Their context: they want skeleton keypoints per frame,
+overlay images for QA, and a manifest a training pipeline can stream, without building
+the ingest/extraction/storage plumbing themselves. They clone this sample, point it at
+their own B2 bucket and footage, and extend it for their sport, rig, or model.
 
 ## Product Purpose
 
-An engineering-grade full-stack starter kit (Next.js 16 + React 19 + Tailwind v4 +
-shadcn/ui frontend, FastAPI backend) with Backblaze B2 cloud storage integrated out of
-the box. It ships a dashboard, drag-and-drop upload, and a file browser so builders
-start from a working app, not a blank page. Success = a builder can clone it, run it,
-rebrand it via one config file, and trust every screen enough to build on top without
-first fixing it.
+A B2-backed sample (Next.js 16 + React 19 + Tailwind v4 + shadcn/ui frontend, FastAPI
+backend) that extracts 2D/3D pose keypoints from video frames with a local MMPose engine
+and stores every derived artifact on Backblaze B2. The headline is **write
+amplification**: each source frame fans out into keypoint JSON + an overlay image, so a
+50 GB archive expands to 150+ GB of derived data — B2 is the durable storage layer for
+the whole workflow. Success = a builder can clone it, ingest a session, run a real
+extraction, and read the resulting dataset (`keypoints_index.jsonl` + per-frame JSON and
+overlays) straight from B2.
 
 ## Maturity and Support Boundary
 
