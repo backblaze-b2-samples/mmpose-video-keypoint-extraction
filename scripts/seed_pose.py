@@ -43,10 +43,14 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(REPO_ROOT / ".env")
 
-# Blender open-movie CC-BY clip with visible humanoid figures. Override via env.
+# Blender open-movie CC-BY clip with a realistic human figure (Sintel — the
+# girl protagonist), so the default `human` model detects a person and produces
+# non-zero keypoints. Override via MMPOSE_DEMO_VIDEO_URL. If this clip
+# under-detects on your machine, set MMPOSE_USE_DEMO_DATA=1 to fall back to
+# MMPose's own Apache-2.0 demo images.
 DEFAULT_VIDEO_URL = os.environ.get(
     "MMPOSE_DEMO_VIDEO_URL",
-    "https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4",
+    "https://download.blender.org/durian/trailer/sintel_trailer-480p.mp4",
 )
 # MMPose's own Apache-2.0 demo image (license-clean project fixture) — the
 # fallback when the clip can't be fetched and MMPOSE_USE_DEMO_DATA is set.
