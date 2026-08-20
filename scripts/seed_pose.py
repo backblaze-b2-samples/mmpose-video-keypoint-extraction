@@ -72,7 +72,13 @@ def _ffmpeg() -> str:
 
 def _fetch(url: str, dest: Path) -> None:
     out(f"Fetching {url}")
-    with urllib.request.urlopen(url, timeout=60) as resp, open(dest, "wb") as fh:  # noqa: S310
+    # Send a browser-like User-Agent: some CDNs (e.g. download.blender.org) 403
+    # the default Python-urllib UA. Applies to every fetch this helper performs.
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp, open(dest, "wb") as fh:  # noqa: S310
         fh.write(resp.read())
 
 

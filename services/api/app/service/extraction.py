@@ -21,6 +21,42 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _summary(
+    frame_records: list[dict],
+    *,
+    source_bytes: int,
+    derived_bytes: int,
+    total_instances: int,
+    total_keypoints: int,
+) -> dict:
+    """The aggregate metrics block written into a run manifest."""
+    return {
+        "frame_count": len(frame_records),
+        "total_instances": total_instances,
+        "total_keypoints": total_keypoints,
+        "source_bytes": source_bytes,
+        "derived_bytes": derived_bytes,
+        "amplification_ratio": (
+            round(derived_bytes / source_bytes, 4) if source_bytes else 0.0
+        ),
+    }
+
+
+def _persist_progress(run_id: str, frame_records: list[dict], summary: dict) -> None:
+    """Write advancing counts mid-run so the polling detail page isn't frozen.
+
+    Reloads first to preserve concurrent label/notes edits and to avoid
+    resurrecting a run that was deleted or already left `running`.
+    """
+    data = repo.load_manifest(run_id)
+    if data is None or data.get("status") != "running":
+        return
+    data["frames"] = frame_records
+    data["summary"] = summary
+    data["updated_at"] = _now_iso()
+    repo.save_manifest(run_id, data)
+
+
 def run_extraction(run_id: str) -> None:
     """Run inference for every frame in a run's session and persist to B2.
 
@@ -76,6 +112,20 @@ def run_extraction(run_id: str) -> None:
             })
             index_lines.append(json.dumps(frame_records[-1]))
 
+            # Persist advancing counters after each frame so the polling detail
+            # page shows determinate progress instead of a frozen 0 / 0 / 0.
+            _persist_progress(
+                run_id,
+                frame_records,
+                _summary(
+                    frame_records,
+                    source_bytes=source_bytes,
+                    derived_bytes=derived_bytes,
+                    total_instances=total_instances,
+                    total_keypoints=total_keypoints,
+                ),
+            )
+
         index_body = ("\n".join(index_lines) + "\n").encode("utf-8")
         derived_bytes += repo.put_bytes(
             repo.index_key(run_id), index_body, "application/x-ndjson"
@@ -83,16 +133,13 @@ def run_extraction(run_id: str) -> None:
 
         data = repo.load_manifest(run_id) or data
         data["frames"] = frame_records
-        data["summary"] = {
-            "frame_count": len(frame_records),
-            "total_instances": total_instances,
-            "total_keypoints": total_keypoints,
-            "source_bytes": source_bytes,
-            "derived_bytes": derived_bytes,
-            "amplification_ratio": (
-                round(derived_bytes / source_bytes, 4) if source_bytes else 0.0
-            ),
-        }
+        data["summary"] = _summary(
+            frame_records,
+            source_bytes=source_bytes,
+            derived_bytes=derived_bytes,
+            total_instances=total_instances,
+            total_keypoints=total_keypoints,
+        )
         data["status"] = "done"
         data["error"] = None
         data["updated_at"] = _now_iso()

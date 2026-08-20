@@ -19,7 +19,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <Button asChild size="sm" className="h-8">
-          <Link href="/runs">
+          <Link href="/runs?new=1">
             <Plus className="h-3.5 w-3.5" />
             New run
           </Link>

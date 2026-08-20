@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { ErrorState } from "@/components/ui/error-state";
 import {
   Table,
@@ -37,6 +38,7 @@ import {
   useExecuteRun,
   useObjectPreviewUrl,
   useRun,
+  useSessions,
 } from "@/lib/queries";
 import { formatDate } from "@/lib/utils";
 
@@ -87,6 +89,7 @@ export function RunDetail({ runId }: { runId: string }) {
   const engine = useEngineStatus();
   const execute = useExecuteRun();
   const deleteRun = useDeleteRun();
+  const sessions = useSessions();
 
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
@@ -95,6 +98,12 @@ export function RunDetail({ runId }: { runId: string }) {
   const indexKey = run.manifest_key.replace(/run\.json$/, "keypoints_index.jsonl");
   const busy = run.status === "running" || run.status === "pending";
   const engineUnavailable = engine.data && engine.data.available === false;
+  // Total frames the run will process, from the source session (no schema
+  // change needed): the worker iterates exactly these frames.
+  const framesTotal =
+    sessions.data?.find((s) => s.session === run.session)?.frame_count ?? 0;
+  // frame_count advances mid-run — the worker persists it after every frame.
+  const framesDone = run.summary.frame_count || 0;
 
   return (
     <div className="space-y-6">
@@ -112,7 +121,7 @@ export function RunDetail({ runId }: { runId: string }) {
         <div className="flex shrink-0 items-center gap-2">
           <Button
             size="sm"
-            disabled={busy || execute.isPending || !!engineUnavailable}
+            disabled={run.status === "running" || execute.isPending || !!engineUnavailable}
             onClick={() =>
               execute.mutate(run.id, {
                 onSuccess: () => toast.success("Extraction started"),
@@ -179,11 +188,31 @@ export function RunDetail({ runId }: { runId: string }) {
       {busy && (
         <Alert>
           <AlertTitle>
-            {run.status === "pending" ? "Queued" : "Running — preparing model & extracting"}
+            {run.status === "pending" ? "Ready to run" : "Running — preparing model & extracting"}
           </AlertTitle>
           <AlertDescription>
-            The first run of a model downloads its checkpoint from the OpenMMLab
-            zoo, which can take a few minutes. This page refreshes automatically.
+            {run.status === "pending" ? (
+              <p>
+                This run hasn&apos;t started yet. Click <span className="font-medium">Execute</span>{" "}
+                to extract keypoints from its {framesTotal || "source"} frames.
+              </p>
+            ) : (
+              <>
+                <p>
+                  The first run of a model downloads its checkpoint from the
+                  OpenMMLab zoo, which can take a few minutes. This page updates
+                  automatically as frames are processed.
+                </p>
+                {framesTotal > 0 && (
+                  <div className="mt-2 w-full max-w-md space-y-1">
+                    <Progress value={Math.min(100, (framesDone / framesTotal) * 100)} />
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      Frame {framesDone} of {framesTotal}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </AlertDescription>
         </Alert>
       )}

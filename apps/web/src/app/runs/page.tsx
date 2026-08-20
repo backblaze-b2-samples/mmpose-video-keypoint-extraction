@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CreateRunForm } from "@/components/runs/run-form";
 import { RunsList } from "@/components/runs/runs-list";
 
-export default function RunsPage() {
-  const [showForm, setShowForm] = useState(false);
+function RunsPageContent() {
+  // Deep-link support: `/runs?new=1` (e.g. the Dashboard "New run" button)
+  // opens the create form directly instead of behind the toggle.
+  const searchParams = useSearchParams();
+  const [showForm, setShowForm] = useState(searchParams.get("new") === "1");
 
   return (
     <div className="space-y-8">
@@ -46,5 +50,15 @@ export default function RunsPage() {
         <RunsList />
       </div>
     </div>
+  );
+}
+
+export default function RunsPage() {
+  // `useSearchParams` requires a Suspense boundary during static prerender,
+  // otherwise the production build fails (missing-suspense-with-csr-bailout).
+  return (
+    <Suspense>
+      <RunsPageContent />
+    </Suspense>
   );
 }

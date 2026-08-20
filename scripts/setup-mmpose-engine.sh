@@ -29,12 +29,14 @@ echo "==> [1/5] Base scientific stack: numpy<2, openmim, torch, torchvision (CPU
 "$VENV_PIP" install "numpy<2" "openmim>=0.3.9" \
   "torch>=2.1.0,<2.4.0" "torchvision>=0.16.0,<0.19.0"
 
-echo "==> [2/5] Pin a Python-3.12-safe build toolchain"
+echo "==> [2/5] Pin a Python-3.12-safe build toolchain (+ Cython for the xtcocotools source build)"
 # openmim drags openxlab, which pins setuptools==60.2.0; its pkg_resources calls
 # pkgutil.ImpImporter (removed in 3.12) so mim can't even import. Restore a
 # modern-but-not-too-new setuptools: >=70 works, 81 drops the pkg_resources /
-# distutils shims mmcv's source build needs.
-"$VENV_PIP" install --upgrade "setuptools>=70,<81" wheel ninja
+# distutils shims mmcv's source build needs. Cython goes here too: xtcocotools
+# has no macOS-arm64/py3.12 wheel and its setup.py imports Cython (and numpy) at
+# build time, so it must be in the venv before step 4's --no-build-isolation build.
+"$VENV_PIP" install --upgrade "setuptools>=70,<81" wheel ninja cython
 
 echo "==> [3/5] Build mmcv from source (no prebuilt macOS-arm64 wheel — budget minutes)"
 # --no-build-isolation reuses the venv's 3.12-safe setuptools + torch. The
@@ -44,8 +46,13 @@ CPPFLAGS="-Wno-invalid-specialization" "$VENV_MIM" install --no-build-isolation 
   "numpy<2" "mmengine>=0.10.3" "mmcv>=2.1.0,<2.2.0"
 
 echo "==> [4/5] Install mmdet, then the rest of the engine group (mmpose + transitive pins)"
-"$VENV_MIM" install "mmdet>=3.0.0,<3.4.0"
-"$VENV_PIP" install -r "$API_DIR/requirements-engine.txt"
+# Hold numpy<2 on the mim command (as step 3 does for mmcv): without it, mim's
+# resolver upgrades numpy to 2.x and breaks the mmcv/torch ABI built in steps 1-3.
+"$VENV_MIM" install "numpy<2" "mmdet>=3.0.0,<3.4.0"
+# --no-build-isolation reuses the venv's numpy<2 + Cython + setuptools so the
+# source-built xtcocotools (no macOS-arm64/py3.12 wheel) compiles against them,
+# mirroring step 3's mmcv build.
+"$VENV_PIP" install --no-build-isolation -r "$API_DIR/requirements-engine.txt"
 
 echo "==> [5/5] Repair setuptools (step 4 can re-pull openxlab's 60.2.0)"
 "$VENV_PIP" install --upgrade "setuptools>=70,<81"

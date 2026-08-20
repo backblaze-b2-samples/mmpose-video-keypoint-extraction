@@ -43,6 +43,13 @@ Low-severity polish, left for a follow-up; none blocks the core flow.
 - 404 route — the breadcrumb title-cases the unknown slug (e.g. "This Route Does Not Exist"), presenting a nonexistent route as a real page name; the rest of the 404 is solid
 - `/design` — the "Go to Upload" button inside the Patterns empty-state demo does not navigate; it is presumably a static sample, but it looks live on a linked primary surface
 
+## 2026-08-20 — verify
+
+Nitpicks found during automated feature verification (sample-3-verify). Low-severity polish; none blocks the core flow.
+
+- New-run form (`/runs`) — the Keypoint threshold number input renders its default as "0,3" (comma decimal) while the helper text says "Default 0.3": a locale number-formatting inconsistency in the input, not a wayfinding obstruction (`.local/verify/A2/04-newrun-form.png`)
+- Runs empty state (`/runs`) — the copy "Create an extraction run above" is shown while the create form is collapsed (on direct navigation to `/runs`), so "above" points at empty space until the form is toggled open; the dashboard entry now opens the form via `?new=1`, so this only affects direct `/runs` visits (`.local/verify/A/03-runs-list.png`)
+
 ## Resolved
 
 | Description | Resolution |
