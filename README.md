@@ -24,17 +24,25 @@ run beyond storage).
 
 ## What it looks like
 
-**Dashboard** — the write-amplification headline plus run activity:
+**Dashboard** — pose keypoint metrics, the B2 write-amplification headline, a runs-per-day chart, and recent extraction runs.
 
 ![Dashboard showing pose metrics, write-amplification, and recent runs](docs/images/dashboard.png)
 
-**Run detail** — skeleton overlays, per-frame keypoints, and manifest download:
+**Ingest** — drag-and-drop upload of source frames and clips straight to Backblaze B2, organized by session.
 
-![Run detail showing skeleton overlay gallery and per-frame keypoints](docs/images/run-detail.png)
+![Ingest page with a drag-and-drop upload dropzone](docs/images/ingest.png)
 
-**Runs** — the Extraction Run list with status and lifecycle actions:
+**Runs** — the Extraction Run list with session, model, frame count, status, and lifecycle actions.
 
-![Extraction runs list](docs/images/runs.png)
+![Extraction runs list with status and lifecycle actions](docs/images/runs.png)
+
+**Run detail** — a skeleton-overlay gallery, the per-frame keypoint table, and one-click manifest download.
+
+![Run detail showing the skeleton-overlay gallery and per-frame keypoints](docs/images/run-detail.png)
+
+**Library** — a sample-scoped view of every object written to B2, grouped into ingested sessions and extraction runs.
+
+![Library view scoped to the sample prefix, grouped into sessions and runs](docs/images/library.png)
 
 > **Deploy your own in one click** → [Deploy to Vercel](#deploying-to-vercel). One project, one origin.
 
