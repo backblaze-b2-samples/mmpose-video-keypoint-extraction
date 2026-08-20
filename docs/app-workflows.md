@@ -1,53 +1,48 @@
-<!-- last_verified: 2026-08-06 -->
+<!-- last_verified: 2026-08-20 -->
 # App Workflows
 
 User journeys inside the application.
 
-## Upload Files
+## Ingest a Session
 
-- User navigates to `/upload`
-- Drops or selects files in the dropzone
-- Client validates file size (max 100MB) and type
-- Files upload **directly from the browser to B2** (a presigned PUT). A determinate progress bar tracks the bytes leaving the browser; once they are all sent the row switches to "Verifying upload..." with an *indeterminate* sweeping bar while the API HEADs and magic-byte-sniffs the stored object. That phase has no percentage to report, and a bar parked at a full 100% read as finished-but-stuck
-- On success: toast notification, green checkmark, and a "View in Files" link through to the browser
-- On failure: red status icon with error message
-- User can clear completed uploads
-- The queue lives in an app-wide provider: navigating to another page keeps the upload running, shows an "Uploading N files" indicator in the header, and keeps the duplicate-upload guard armed
-- Reloading or closing mid-upload asks for confirmation first; if the upload dies anyway, the next load says which file didn't finish
-- See: [File Upload](features/file-upload.md)
+- User seeds a demo session with `pnpm run seed` (fetches license-clean footage, decodes ≤16 frames, uploads them under `sessions/<session>/frames/`), or uploads their own frames/clips at `/upload` (Ingest).
+- Uploads go **directly from the browser to B2** (presigned PUT); the queue survives navigation and reports per-file progress.
+- Ingested sessions then appear in the create-run session Select and in the Library.
+- See: [Video / Session Ingest](features/video-ingest.md), [File Upload](features/file-upload.md)
 
-## Browse and Manage Files
+## Create and Run an Extraction
 
-- User navigates to `/files`
-- Page loads the 100 most recent objects from the API (sorted most recent first). While it loads, the page says so on screen and escalates the wording if the wait runs long — a full bucket listing measured 2.8s-21s cold
-- If that limit was hit, a notice states how many objects the bucket actually holds — the page never claims to show everything
-- Files displayed in tree view with folders and type-specific icons
-- Folders auto-expand on load until the *majority* of the listed files are reachable without clicking, so the page's own "click a file" instruction is always actionable. Stopping at the first visible file was not enough: one stray top-level object left the other 99 sealed in collapsed folders while the page claimed to show 100
-- Clicking a file row opens its preview; the per-row actions menu (preview / download / delete) is always visible, on every viewport
-- Arriving at `/files?preview=<key>` expands that file's folders and opens its preview directly. This is how the ⌘K palette and the dashboard's recent-uploads rows hand off a *specific* file; the param is consumed on arrival so it doesn't re-fire later
-- **Preview**: opens dialog with image/PDF preview + metadata panel, and the file's Download / Delete actions — the advertised "click a file" path offers everything the row menu does. The loading state holds until the media paints; a failure offers "Open in a new tab". The preview URL is signed with `Content-Disposition: inline` so PDFs render in place
-- **Download**: shows a pending state on the row plus a toast while the presigned URL is fetched, then starts the download via an anchor click (which, unlike a popup, still works if the click's user activation expired during a slow presign). Failures are reported; the click can never silently do nothing
-- **Delete**: the confirmation dialog stays open showing "Deleting..." until the request settles, then the row disappears with the toast (optimistic cache update) and the list reconciles with the server. The dialog is held deliberately — Radix closes on action click by default, which dismissed the only pending state and left the row looking untouched while the delete was still in flight
-- Empty bucket shows "No files found" with upload prompt
-- See: [File Browser](features/file-browser.md)
+- User navigates to `/runs` and clicks **New run**.
+- The form uses Selects for finite-option fields: session (from `GET /sessions`, shown as `name (N frames)`), model (`human` default · `wholebody` · `hand` · `human3d`), device (`auto` default · `cpu` · `cuda` · `mps`); a bounded number input for `kpt_thr` (0–1, default 0.3); and a free-text label. Create-only hints describe each model and the safe defaults.
+- Submitting creates a `pending` run (its `run.json` manifest is written to B2) and navigates to the run detail page.
+- On the detail page the user clicks **Execute**. If the engine isn't installed the button is disabled with an install hint and the API would return 503 (recording an `error` run — never a fake result). Otherwise the run goes `running` and the page auto-refreshes while a background thread runs inference per frame and writes keypoints, overlays, and the manifest to B2.
+- See: [Pose-Extraction Runs](features/pose-extraction-runs.md), [MMPose Keypoint Extraction](features/mmpose-engine.md)
+
+## Inspect a Run
+
+- User opens `/runs/[id]`.
+- Header shows the label, a live status badge, and the config; a summary shows frames, instances, keypoints, source→derived bytes, and the amplification ratio.
+- A skeleton-overlay gallery renders each frame's overlay (presigned inline URLs); a per-frame table lists instances/keypoints/mean score with an "Open JSON" link; buttons open `run.json` and `keypoints_index.jsonl`.
+- The user can edit label/notes/tags (source session is fixed), re-run, or delete (prefix-scoped delete of all run artifacts).
+- See: [Pose-Extraction Runs](features/pose-extraction-runs.md), [Keypoints Manifest](features/keypoints-manifest.md)
+
+## Browse the Library (scoped) and Files (whole bucket)
+
+- `/library` shows everything this sample wrote to B2 under `MMPOSE_PREFIX`, grouped by stage (sessions → runs) with per-stage counts and byte totals.
+- `/files` is the kept full-bucket explorer: tree view, preview, download, delete — it browses the entire bucket, not just this sample's prefix.
+- See: [Session Library](features/session-library.md), [File Browser](features/file-browser.md)
 
 ## View Dashboard
 
-- User navigates to `/` (home)
-- Three parallel API calls load: stats, recent files, upload activity — all served from one shared bucket listing that the API warms at startup
-- While stats load, the page states it in words above the cards rather than showing silent skeletons
-- Stats cards show: total files, storage used, uploads today, total downloads
-- Upload chart shows last 7 days of upload activity as bar chart
-- Recent uploads table shows last 10 files with filename, size, type, date. Each filename links to that file's preview on `/files` — `/files` teaches "click a file to preview it", so the same gesture here has to answer rather than being inert text
-- Empty state: "No files uploaded yet" messages
+- User navigates to `/` (home).
+- The write-amplification card leads: source bytes vs derived bytes and the ratio (every frame fans out into keypoint JSON + an overlay).
+- Stat cards show extraction runs, frames processed, keypoints extracted, and the amplification ratio; a chart shows runs per day; a table lists recent runs linking to their detail pages.
+- Empty state: "No runs yet".
 - See: [Dashboard](features/dashboard.md)
 
 ## Change Preferences
 
-- User navigates to `/settings`
-- A banner at the top states that the page is mostly a demonstration: only Theme is wired up for real, the rest showcases what a settings page can look like when you adapt the kit
-- **Theme** (real): editing it and saving applies it immediately and persists it (`next-themes`), and the header's theme toggle drives the same state
-- **Profile and preference fields** (demo): Display name, Bio, Default file view (Tree/List/Grid), Email me on every upload, Warn me when approaching quota + threshold. Each is labelled "Demo field", persists to `localStorage` only, and drives no behaviour — there is no account system, mailer, quota banner, activity log, or List/Grid view behind them yet
-- Saving reports honestly: a success toast that separates the real theme change from the locally-stored demo values, or a warning toast if the browser blocked storage (theme still changes). It never claims a save that did not happen — the original page toasted "Settings saved" for fields that changed nothing
-- Danger Zone actions are a demo — no real delete runs
+- User navigates to `/settings`.
+- A banner states the page is mostly a demonstration: only Theme is wired up for real; the rest showcases what a settings page can look like when you adapt the kit.
+- **Theme** (real) applies immediately and persists (`next-themes`); the header toggle drives the same state. Other fields are labelled "Demo field", persist to `localStorage` only, and drive no behaviour. Danger Zone actions are a demo.
 - See: [Settings](features/settings.md)

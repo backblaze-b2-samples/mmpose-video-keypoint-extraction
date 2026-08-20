@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { StatsCards } from "@/components/dashboard/stats-cards";
-import { RecentUploadsTable } from "@/components/dashboard/recent-uploads-table";
-import { UploadChart } from "@/components/dashboard/upload-chart";
+import { PoseStatsCards } from "@/components/dashboard/pose-stats-cards";
+import { AmplificationCard } from "@/components/dashboard/amplification-card";
+import { RunsActivityChart } from "@/components/dashboard/runs-activity-chart";
+import { RecentRunsTable } from "@/components/dashboard/recent-runs-table";
 
 export default function DashboardPage() {
   return (
@@ -13,23 +14,27 @@ export default function DashboardPage() {
         <div>
           <h1 className="page-title">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Overview of your Backblaze B2 storage activity.
+            Pose keypoint extraction across your video libraries, stored on
+            Backblaze B2.
           </p>
         </div>
         <Button asChild size="sm" className="h-8">
-          <Link href="/upload">
-            <Upload className="h-3.5 w-3.5" />
-            Upload files
+          <Link href="/runs">
+            <Plus className="h-3.5 w-3.5" />
+            New run
           </Link>
         </Button>
       </div>
-      <StatsCards />
+      <PoseStatsCards />
+      <div className="animate-fade-in-up stagger-2">
+        <AmplificationCard />
+      </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="animate-fade-in-up stagger-3">
-          <UploadChart />
+          <RunsActivityChart />
         </div>
         <div className="animate-fade-in-up stagger-4">
-          <RecentUploadsTable />
+          <RecentRunsTable />
         </div>
       </div>
     </div>

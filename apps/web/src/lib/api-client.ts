@@ -1,11 +1,18 @@
 import type {
+  CreateRunRequest,
   DailyUploadCount,
+  EngineStatus,
   FileMetadata,
   FileMetadataDetail,
   FileUploadResponse,
+  LibrarySummary,
+  PoseStats,
   PresignUploadResponse,
+  RunRecord,
+  SessionInfo,
+  UpdateRunRequest,
   UploadStats,
-} from "@vibe-coding-starter-kit/shared";
+} from "@mmpose-video-keypoint-extraction/shared";
 
 // Single-origin deploys (Vercel `services`: one project serving web + API) put
 // the API under /api on the same origin, so no NEXT_PUBLIC_API_URL is needed —
@@ -17,7 +24,7 @@ export const API_BASE =
   (process.env.NODE_ENV === "production" ? "/api" : "http://localhost:8000");
 
 type ApiClientRoute = {
-  method: "delete" | "get" | "post";
+  method: "delete" | "get" | "patch" | "post";
   path: string;
 };
 
@@ -41,6 +48,18 @@ export const API_CLIENT_ROUTES = {
   // payload ceiling no longer caps upload size.
   uploadPresign: { method: "post", path: "/upload/presign" },
   uploadVerify: { method: "post", path: "/upload/verify" },
+  // MMPose keypoint-extraction domain.
+  engineStatus: { method: "get", path: "/engine/status" },
+  sessions: { method: "get", path: "/sessions" },
+  sessionFrames: { method: "get", path: "/sessions/{session}/frames" },
+  runs: { method: "get", path: "/runs" },
+  createRun: { method: "post", path: "/runs" },
+  runById: { method: "get", path: "/runs/{run_id}" },
+  updateRun: { method: "patch", path: "/runs/{run_id}" },
+  deleteRun: { method: "delete", path: "/runs/{run_id}" },
+  executeRun: { method: "post", path: "/runs/{run_id}/execute" },
+  poseStats: { method: "get", path: "/stats/pose" },
+  library: { method: "get", path: "/library" },
 } as const satisfies Record<string, ApiClientRoute>;
 
 /** Typed API error with HTTP status code for caller-side branching. */
@@ -350,4 +369,78 @@ function putFileToStorage(
     }
     xhr.send(file);
   });
+}
+
+// ---- MMPose keypoint-extraction domain ----------------------------------
+
+/** Substitute a single `{name}` path param, URL-encoding the value. */
+function withParam(template: string, name: string, value: string): string {
+  return template.replace(`{${name}}`, encodeURIComponent(value));
+}
+
+export async function getEngineStatus(device = "auto") {
+  return apiFetch<EngineStatus>(
+    `${API_CLIENT_ROUTES.engineStatus.path}?device=${encodeURIComponent(device)}`
+  );
+}
+
+export async function getSessions() {
+  return apiFetch<SessionInfo[]>(API_CLIENT_ROUTES.sessions.path);
+}
+
+export async function getSessionFrames(session: string) {
+  return apiFetch<string[]>(
+    withParam(API_CLIENT_ROUTES.sessionFrames.path, "session", session)
+  );
+}
+
+export async function getRuns() {
+  return apiFetch<RunRecord[]>(API_CLIENT_ROUTES.runs.path);
+}
+
+export async function getRun(runId: string) {
+  return apiFetch<RunRecord>(
+    withParam(API_CLIENT_ROUTES.runById.path, "run_id", runId)
+  );
+}
+
+export async function createRun(req: CreateRunRequest) {
+  return apiFetch<RunRecord>(API_CLIENT_ROUTES.createRun.path, {
+    method: API_CLIENT_ROUTES.createRun.method.toUpperCase(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export async function updateRun(runId: string, req: UpdateRunRequest) {
+  return apiFetch<RunRecord>(
+    withParam(API_CLIENT_ROUTES.updateRun.path, "run_id", runId),
+    {
+      method: API_CLIENT_ROUTES.updateRun.method.toUpperCase(),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    }
+  );
+}
+
+export async function deleteRun(runId: string) {
+  return apiFetch<{ deleted: boolean; id: string }>(
+    withParam(API_CLIENT_ROUTES.deleteRun.path, "run_id", runId),
+    { method: API_CLIENT_ROUTES.deleteRun.method.toUpperCase() }
+  );
+}
+
+export async function executeRun(runId: string) {
+  return apiFetch<RunRecord>(
+    withParam(API_CLIENT_ROUTES.executeRun.path, "run_id", runId),
+    { method: API_CLIENT_ROUTES.executeRun.method.toUpperCase() }
+  );
+}
+
+export async function getPoseStats() {
+  return apiFetch<PoseStats>(API_CLIENT_ROUTES.poseStats.path);
+}
+
+export async function getLibrary() {
+  return apiFetch<LibrarySummary>(API_CLIENT_ROUTES.library.path);
 }

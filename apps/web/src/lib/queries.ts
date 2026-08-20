@@ -8,19 +8,36 @@ import {
 } from "@tanstack/react-query";
 import {
   ApiError,
+  createRun,
   deleteFile,
+  deleteRun,
+  executeRun,
   getDownloadUrl,
+  getEngineStatus,
   getFileDetail,
   getFiles,
   getFileStats,
   getHealth,
+  getLibrary,
+  getPoseStats,
   getPreviewUrl,
+  getRun,
+  getRuns,
+  getSessions,
   getUploadActivity,
+  updateRun,
 } from "@/lib/api-client";
 import type {
+  CreateRunRequest,
+  EngineStatus,
   FileMetadata,
   FileMetadataDetail,
-} from "@vibe-coding-starter-kit/shared";
+  LibrarySummary,
+  PoseStats,
+  RunRecord,
+  SessionInfo,
+  UpdateRunRequest,
+} from "@mmpose-video-keypoint-extraction/shared";
 
 // Single source of truth for query keys. Keep these tightly scoped so that
 // invalidating "files" doesn't blow away unrelated caches, and so an IDE
@@ -35,6 +52,12 @@ export const qk = {
   preview: (key: string) => [...qk.all, "preview", key] as const,
   detail: (key: string) => [...qk.all, "detail", key] as const,
   health: () => [...qk.all, "health"] as const,
+  engineStatus: () => [...qk.all, "engine-status"] as const,
+  sessions: () => [...qk.all, "sessions"] as const,
+  runs: () => [...qk.all, "runs"] as const,
+  run: (id: string) => [...qk.all, "run", id] as const,
+  poseStats: () => [...qk.all, "pose-stats"] as const,
+  library: () => [...qk.all, "library"] as const,
 };
 
 export type Health = Awaited<ReturnType<typeof getHealth>>;
@@ -167,5 +190,118 @@ export function useDeleteFile() {
       dropDeletedFileFromCache(qc, fileKey);
       qc.invalidateQueries({ queryKey: qk.all });
     },
+  });
+}
+
+// ---- MMPose keypoint-extraction domain ----------------------------------
+
+export function useEngineStatus() {
+  return useQuery<EngineStatus, ApiError>({
+    queryKey: qk.engineStatus(),
+    queryFn: () => getEngineStatus(),
+    staleTime: 30_000,
+  });
+}
+
+export function useSessions() {
+  return useQuery<SessionInfo[], ApiError>({
+    queryKey: qk.sessions(),
+    queryFn: getSessions,
+  });
+}
+
+export function useRuns() {
+  return useQuery<RunRecord[], ApiError>({
+    queryKey: qk.runs(),
+    queryFn: getRuns,
+  });
+}
+
+/**
+ * One run. While it is `running` the query polls so the detail page updates as
+ * extraction finishes; once `done`/`error` it stops polling.
+ */
+export function useRun(id: string | undefined) {
+  return useQuery<RunRecord, ApiError>({
+    queryKey: qk.run(id ?? ""),
+    queryFn: () => getRun(id as string),
+    enabled: !!id,
+    refetchInterval: (query) =>
+      query.state.data?.status === "running" ||
+      query.state.data?.status === "pending"
+        ? 2_000
+        : false,
+  });
+}
+
+export function usePoseStats({ enabled = true }: QueryGate = {}) {
+  return useQuery<PoseStats, ApiError>({
+    queryKey: qk.poseStats(),
+    queryFn: getPoseStats,
+    enabled,
+  });
+}
+
+export function useLibrary() {
+  return useQuery<LibrarySummary, ApiError>({
+    queryKey: qk.library(),
+    queryFn: getLibrary,
+  });
+}
+
+export function useCreateRun() {
+  const qc = useQueryClient();
+  return useMutation<RunRecord, ApiError, CreateRunRequest>({
+    mutationFn: (req) => createRun(req),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.runs() });
+      qc.invalidateQueries({ queryKey: qk.poseStats() });
+    },
+  });
+}
+
+export function useUpdateRun(id: string) {
+  const qc = useQueryClient();
+  return useMutation<RunRecord, ApiError, UpdateRunRequest>({
+    mutationFn: (req) => updateRun(id, req),
+    onSuccess: (data) => {
+      qc.setQueryData(qk.run(id), data);
+      qc.invalidateQueries({ queryKey: qk.runs() });
+    },
+  });
+}
+
+export function useDeleteRun() {
+  const qc = useQueryClient();
+  return useMutation<{ deleted: boolean; id: string }, ApiError, string>({
+    mutationFn: (id) => deleteRun(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.runs() });
+      qc.invalidateQueries({ queryKey: qk.poseStats() });
+      qc.invalidateQueries({ queryKey: qk.library() });
+    },
+  });
+}
+
+export function useExecuteRun() {
+  const qc = useQueryClient();
+  return useMutation<RunRecord, ApiError, string>({
+    mutationFn: (id) => executeRun(id),
+    onSuccess: (data) => {
+      qc.setQueryData(qk.run(data.id), data);
+      qc.invalidateQueries({ queryKey: qk.runs() });
+    },
+  });
+}
+
+/**
+ * Fetch a presigned inline URL for an arbitrary B2 object key on demand.
+ *
+ * A mutation, not a query: opening a manifest / keypoints JSON is a user
+ * gesture with no cache identity to key on, and it must run fresh each click.
+ */
+export function useObjectPreviewUrl() {
+  return useMutation<{ url: string }, ApiError, string>({
+    mutationFn: (key) => getPreviewUrl(key),
   });
 }

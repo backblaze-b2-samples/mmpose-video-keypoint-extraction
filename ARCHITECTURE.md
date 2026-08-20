@@ -4,19 +4,17 @@
 ## Components
 
 - **apps/web/** — Next.js 16 frontend (App Router, Tailwind v4, shadcn/ui)
-  - Dashboard with stats, upload chart, recent uploads
-  - File upload with drag-and-drop, progress tracking
-  - File browser with preview, download, delete
+  - Dashboard: write-amplification headline, frames/keypoints processed, runs over time
+  - Ingest (`/upload`), Runs (`/runs`, `/runs/[id]`), scoped Library (`/library`)
+  - Full-bucket File browser (`/files`) — kept from the starter, non-negotiable
   - Dark mode via `next-themes`
 - **services/api/** — FastAPI backend (layered architecture)
-  - REST API for file upload, listing, deletion
-  - B2 S3 integration via boto3
-  - File metadata extraction (images, PDFs)
-  - Health check endpoint with B2 connectivity verification
-  - Structured JSON logging with request tracing
-  - Prometheus-format metrics endpoint
+  - REST API for sessions, the Extraction Run entity (CRUD + execute), stats, library
+  - B2 S3 integration via boto3 (frames in; keypoints/overlays/manifest out)
+  - The MMPose engine (opt-in, lazy-imported) under `app/engine/`
+  - Health check, structured JSON logging, Prometheus-format metrics
 - **packages/shared/** — TypeScript type definitions
-  - Mirrors Pydantic models from the API
+  - Mirrors Pydantic models from the API (RunRecord, PoseStats, …)
   - Consumed by `apps/web/` as workspace dependency
 
 ## Backend Layering
@@ -49,13 +47,29 @@ runtime/   FastAPI routes — calls service, never repo directly
 services/api/
   main.py                  App entrypoint, middleware, router registration
   app/
-    types/                 Pydantic models (FileMetadata, UploadStats, etc.)
+    types/                 Pydantic models (FileMetadata, RunRecord, PoseStats, …)
     config/                Settings loaded from environment
-    repo/                  B2 S3 client (data access layer)
-    service/               Business logic (upload, files, metadata)
+    repo/                  B2 S3 client + run/session persistence (data access)
+    service/               Business logic (files, upload, runs, extraction, pose_stats)
+    engine/                MMPose engine — opt-in, lazy-imported (device, runner, keypoints)
     runtime/               FastAPI route handlers
   tests/                   pytest tests (structural + integration)
 ```
+
+### The MMPose engine (`app/engine/`)
+
+The engine is compute, not a layer: it takes frame bytes + a config and returns
+keypoints, with no B2 or FastAPI knowledge. It is import-cheap — nothing under
+`app/engine/` imports torch/mmcv/mmdet/mmpose at module load; those live in the
+**opt-in** `requirements-engine.txt` group and are imported lazily inside
+function bodies. So the base app, `pnpm verify`, and CI all run green without the
+engine installed. `engine_status.engine_available()` gates the one path that
+needs it (`service.runs.execute_run`), which records an `error` run and raises
+`EngineUnavailableError` (→ 503) rather than fabricating a result. `service/`
+orchestrates repo (B2 I/O) + engine (compute); the engine never imports repo.
+Device selection auto-detects CUDA → CPU (Apple MPS is opt-in only — the bundled
+detector's custom ops have no MPS kernels); see
+[docs/features/mmpose-engine.md](docs/features/mmpose-engine.md).
 
 ## Boundary Invariants
 
@@ -92,10 +106,31 @@ External provisioning and deployment remain explicit user-approved actions.
 
 ## Data Stores
 
-- **Backblaze B2** — object storage (S3-compatible API)
-  - All uploaded files stored in a single bucket
-  - File listing and metadata via S3 `list_objects_v2` / `head_object`
-  - No application database — B2 is the sole data store
+- **Backblaze B2** — object storage (S3-compatible API), the sole data store
+  - No application database — the Extraction Run entity is a B2 JSON manifest
+  - The regional S3 endpoint is **derived** from `B2_REGION`
+    (`https://s3.<B2_REGION>.backblazeb2.com`); no region is hardcoded in source
+  - The single boto3 client in `repo/b2_client.py` carries the custom user agent
+    `b2ai-mmpose-video-keypoint-extraction` (`user_agent_extra`); all B2 access —
+    including run/session persistence in `repo/runs.py` — reuses it
+
+### B2 key layout (under `MMPOSE_PREFIX`, default `mmpose-video-keypoint-extraction/`)
+
+```
+mmpose-video-keypoint-extraction/
+  sessions/<session>/frames/<frame>.jpg        # ingested source frames
+  runs/<run_id>/run.json                        # RunRecord manifest (the entity)
+  runs/<run_id>/keypoints/<frame>.json          # per-frame keypoint JSON
+  runs/<run_id>/overlays/<frame>.png            # skeleton-overlay images
+  runs/<run_id>/keypoints_index.jsonl           # per-frame dataset manifest
+```
+
+### Two explorers
+
+- **Full-bucket File Explorer** (`/files`) — the kept starter surface; browses
+  the whole bucket. Non-negotiable.
+- **Scoped Library** (`/library`) — objects under `MMPOSE_PREFIX` grouped by
+  stage (sessions → runs). The two coexist by design.
 
 ## External Services
 
@@ -111,10 +146,12 @@ See [docs/SECURITY.md](docs/SECURITY.md) for full security documentation.
 
 ## Data Flows
 
-- **Upload**: Browser -> `POST /upload/presign` (API validates the declared file + signs a PUT) -> Browser PUTs bytes **directly to B2** -> `POST /upload/verify` (API HEADs + Range-sniffs the stored object) -> response
-- **List**: Browser -> `GET /files` -> service calls repo -> returns file list
-- **Download**: Browser -> `GET /files/{key}/download` -> service validates key -> repo generates presigned URL -> browser downloads
-- **Delete**: Browser -> `DELETE /files/{key}` -> service validates key -> repo deletes from B2
+- **Ingest**: `pnpm run seed` (or the Ingest upload) writes frames to `sessions/<session>/frames/` on B2
+- **Create run**: Browser -> `POST /runs` -> service validates the session has frames -> writes a `pending` `run.json`
+- **Execute** (heavy path): Browser -> `POST /runs/{id}/execute` -> `engine_available()` gate -> run marked `running` -> background thread runs inference per frame -> keypoint JSON + overlay PNG + `keypoints_index.jsonl` written to B2 -> run marked `done` with a summary. Engine absent -> run `error`, API returns 503.
+- **Read**: Browser -> `GET /runs` / `GET /runs/{id}` -> service reads manifests from B2
+- **Delete**: Browser -> `DELETE /runs/{id}` -> repo prefix-scoped delete of all run artifacts (source frames untouched)
+- **File browser / library**: `GET /files` (whole bucket) and `GET /library` (scoped counts) -> repo `list_objects_v2`
 
 ## Observability
 
@@ -137,23 +174,26 @@ silently drift from FastAPI. `GET /metrics` is intentionally server-only.
 
 ## Canonical Files
 
-- Layered API handler: `services/api/app/runtime/upload.py`
-- Service orchestration: `services/api/app/service/upload.py`
-- B2 data access (repo layer): `services/api/app/repo/b2_client.py`
-- Pydantic models: `services/api/app/types/` (`files.py`, `upload.py`, `stats.py`, `formatting.py`)
+- Layered API handler: `services/api/app/runtime/runs.py`
+- Service orchestration: `services/api/app/service/runs.py`, `service/extraction.py`
+- MMPose engine: `services/api/app/engine/mmpose_runner.py`, `engine/device.py`
+- B2 data access (repo layer): `services/api/app/repo/b2_client.py`, `repo/runs.py`
+- Pydantic models: `services/api/app/types/` (`runs.py`, `files.py`, `upload.py`, `stats.py`)
 - Config (pydantic-settings): `services/api/app/config/settings.py`
 - Structural tests: `services/api/tests/test_structure.py`
 - OpenAPI contract: `docs/api/openapi.json`
-- OpenAPI exporter: `services/api/scripts/export_openapi.py`
 - Frontend API client: `apps/web/src/lib/api-client.ts`
 - Shared TypeScript types: `packages/shared/src/types.ts`
 
 ## Core Features
 
-- [File Upload](docs/features/file-upload.md)
-- [File Browser](docs/features/file-browser.md)
+- [MMPose Keypoint Extraction](docs/features/mmpose-engine.md)
+- [Pose-Extraction Runs](docs/features/pose-extraction-runs.md)
+- [Keypoints Manifest](docs/features/keypoints-manifest.md)
+- [Video / Session Ingest](docs/features/video-ingest.md)
+- [Session Library](docs/features/session-library.md)
 - [Dashboard](docs/features/dashboard.md)
-- [Metadata Extraction](docs/features/metadata-extraction.md)
+- [File Browser](docs/features/file-browser.md)
 
 ## References
 

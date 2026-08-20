@@ -8,6 +8,11 @@ capped by Vercel's ~4.5 MB Function payload limit — the same flow handles up t
 `max_file_size` (100 MB default) on local, Railway, and Vercel alike, and is a
 direct showcase of B2 as the storage layer.
 
+> In this sample the `/upload` route is presented as **Ingest**. It keeps the
+> starter's direct-to-B2 upload verbatim; the primary demo ingest is the seed
+> script, which populates a session under `sessions/<session>/frames/`. See
+> [Video / Session Ingest](video-ingest.md).
+
 ## Used By
 - UI: `/upload` page, upload form component
 - API: `POST /upload/presign`, `POST /upload/verify`

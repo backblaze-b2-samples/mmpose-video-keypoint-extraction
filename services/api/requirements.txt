@@ -11,6 +11,14 @@ pydantic-settings>=2.7.0
 boto3>=1.35.0
 Pillow>=11.0.0
 PyPDF2>=3.0.0
+# numpy is held below 2.0 so it stays ABI-compatible with the opt-in MMPose
+# engine group (torch<2.4 / mmcv build against numpy 1.x). Keeping the same pin
+# in the base means a later `pnpm run setup:mmpose-engine` never has to downgrade
+# numpy under an already-imported extension.
+numpy>=1.26.0,<2.0.0
+# License-clean frame extraction for the seed script: resolves an ffmpeg binary
+# via imageio_ffmpeg.get_ffmpeg_exe(), so no system ffmpeg is required.
+imageio-ffmpeg>=0.5.0
 
 # Dev / quality
 ruff>=0.8.0

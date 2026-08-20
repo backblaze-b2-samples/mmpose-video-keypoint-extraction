@@ -54,6 +54,30 @@ with a concurrently held `0.0.0.0` bind and would report a free port as busy.
 - Backend: `services/api/tests/`
 - E2E: `apps/web/e2e/` with config in `apps/web/playwright.config.ts`
 
+## MMPose engine is off the base critical path
+`pnpm verify` (and CI) run **without** the MMPose engine installed. The engine
+group (`services/api/requirements-engine.txt`: torch + mmcv + mmdet + mmpose) is
+opt-in and excluded from `pnpm run setup`, the lock, and CI. The engine modules
+under `services/api/app/engine/` lazy-import the heavy stack inside function
+bodies, so `from main import app`, the structural gates, and every backend test
+pass with only the base venv. `tests/test_engine.py` and `tests/test_runs.py`
+assert the engine-absent behavior (device policy, the `engine_available()` →
+503 gate) directly, without the stack.
+
+**Real-pose proof** (a separate, heavier check) needs the engine and seeded
+footage:
+
+```bash
+pnpm run setup:mmpose-engine   # source-builds mmcv on macOS arm64 (minutes)
+pnpm run seed                  # uploads a license-clean demo session to B2
+```
+
+Then execute a run and confirm non-zero keypoints, keypoint JSON + overlays +
+`keypoints_index.jsonl` in B2, and a derived>source amplification ratio on the
+dashboard. First execution also downloads model checkpoints from the OpenMMLab
+zoo (multi-minute cold); the run reports a `running`/"preparing model" status
+while it does.
+
 ## Pre-commit
 
 The tracked [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) is an

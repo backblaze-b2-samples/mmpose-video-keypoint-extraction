@@ -13,12 +13,20 @@ This is the authoritative control surface for all coding agents. Read this first
 ```
 apps/web/          Next.js 16 frontend (App Router, Tailwind v4, shadcn/ui)
 services/api/      FastAPI backend (layered: types/config/repo/service/runtime)
+services/api/app/engine/   MMPose engine — opt-in, lazy-imported, off the base critical path
 packages/shared/   Shared TypeScript types
 docs/              System of record (features, workflows, security, reliability)
 docs/exec-plans/   Execution plans and tech debt tracker
 infra/railway/     Railway delivery contract (per-service railway.json live at their service roots)
 infra/vercel/      Vercel deployment contract
 ```
+
+Primary feature: MMPose keypoint extraction. Primary entity: the Extraction Run
+(`/runs`), persisted as a B2 JSON manifest — no database. The heavy engine
+(torch/mmcv/mmdet/mmpose, `services/api/requirements-engine.txt`) is opt-in
+(`pnpm run setup:mmpose-engine`) and never loaded by `pnpm verify`; keep it that
+way — lazy-import inside function bodies and gate execution on
+`engine_available()`.
 
 ## 2. Building on This Starter Kit
 

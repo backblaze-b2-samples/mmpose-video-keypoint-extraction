@@ -1,12 +1,31 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    b2_endpoint: str = "https://s3.us-west-004.backblazeb2.com"
-    b2_key_id: str = ""
+    # Backblaze B2, addressed over the S3-compatible API. The regional endpoint
+    # is derived from `b2_region` (see the `b2_endpoint` property) so no region
+    # string is ever hardcoded in source — the b2-doctor standard.
+    b2_application_key_id: str = ""
     b2_application_key: str = ""
     b2_bucket_name: str = ""
-    b2_public_url: str = ""
+    b2_region: str = ""
+    # Optional: base URL for building public object URLs (only meaningful for a
+    # public bucket). The app runs without it — presigned URLs cover private
+    # buckets — so it stays optional.
+    b2_public_url_base: str = ""
+
+    # Every object this sample writes lives under this prefix, so the scoped
+    # Library explorer and prefix-scoped run deletes never touch other apps'
+    # data in a shared bucket. Mirrors the frontend `SAMPLE_PREFIX`
+    # (apps/web/src/lib/sample-prefix.ts). Read from MMPOSE_PREFIX.
+    sample_prefix: str = Field(
+        default="mmpose-video-keypoint-extraction/",
+        validation_alias="MMPOSE_PREFIX",
+    )
+    # Default device preference for the MMPose engine ("auto" resolves CUDA →
+    # CPU; MPS is opt-in only — see app/engine/device.py). Read from MMPOSE_DEVICE.
+    mmpose_device: str = Field(default="auto", validation_alias="MMPOSE_DEVICE")
 
     api_port: int = 8000
     # Interactive API docs (/docs, /redoc, /openapi.json). On by default for
@@ -69,7 +88,24 @@ class Settings(BaseSettings):
     # normal user action into an API restart that drops in-flight requests.
     download_count_file: str = ".data/download_count.json"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        # Allow populating aliased fields (sample_prefix, mmpose_device) by their
+        # Python names too, so tests and internal callers can set them directly.
+        "populate_by_name": True,
+    }
+
+    @property
+    def b2_endpoint(self) -> str:
+        """Regional S3 endpoint, derived from `b2_region`.
+
+        Kept as a derived value (never a literal) so the region lives in exactly
+        one place — the `B2_REGION` env var — and no region string is baked into
+        source. Empty when `b2_region` is unset; startup fails fast in that case
+        (see main.REQUIRED_B2_SETTINGS).
+        """
+        return f"https://s3.{self.b2_region}.backblazeb2.com"
 
     @property
     def cors_origins(self) -> list[str]:

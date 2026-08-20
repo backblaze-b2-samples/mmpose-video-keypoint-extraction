@@ -34,11 +34,14 @@ def test_openapi_metadata_uses_canonical_local_api_identity():
     schema = app.openapi()
 
     assert schema["info"] == {
-        "title": "Vibe Coding Starter Kit API",
+        "title": "MMPose Video Keypoint Extraction API",
         "description": (
-            "Local API for the Vibe Coding Starter Kit template, providing file "
-            "upload and management backed by Backblaze B2. This contract "
-            "documents the template's local API, not a hosted public endpoint."
+            "Local API for MMPose Video Keypoint Extraction: ingest video/frame "
+            "sessions to Backblaze B2, run the on-device MMPose engine to "
+            "extract 2D/3D skeleton keypoints, and write per-frame keypoint "
+            "JSON, skeleton-overlay PNGs, and a keypoints_index.jsonl dataset "
+            "manifest back to B2. This contract documents the local API, not a "
+            "hosted public endpoint."
         ),
         "version": "0.1.0",
     }

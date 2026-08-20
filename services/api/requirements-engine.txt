@@ -1,0 +1,27 @@
+# Opt-in MMPose engine group — the real 2D/3D pose stack.
+#
+# NOT installed by `pnpm run setup`, NOT part of `pnpm verify`/CI, and NOT in
+# requirements.lock: the base app lazy-imports the engine and stays green
+# without it. Install with `pnpm run setup:mmpose-engine`
+# (scripts/setup-mmpose-engine.sh) into the SAME services/api/.venv.
+#
+# Loose ranges (validated at engine-verify time), not exact pins — mmcv has no
+# prebuilt macOS-arm64 wheel and is built from source by the setup script, whose
+# ORDERING is load-bearing. Read scripts/setup-mmpose-engine.sh before editing.
+numpy<2
+torch>=2.1.0,<2.4.0
+torchvision>=0.16.0,<0.19.0
+openmim>=0.3.9
+mmengine>=0.10.3
+mmcv>=2.1.0,<2.2.0
+mmdet>=3.0.0,<3.4.0
+mmpose>=1.3.0,<1.4.0
+# Transitive pins the mim source-build resolver / mmpose setup tends to miss.
+platformdirs>=3.5
+ftfy>=6.1.0
+regex>=2023.0.0
+json_tricks>=3.16.0
+munkres>=1.1.4
+xtcocotools>=1.14
+opencv-python-headless>=4.8,<4.12   # 5.x forces numpy 2 — hold to 4.x
+matplotlib>=3.7,<3.10               # MMPose visualization backend

@@ -1,6 +1,53 @@
 {
   "components": {
     "schemas": {
+      "CreateRunRequest": {
+        "properties": {
+          "device": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "cpu",
+              "cuda",
+              "mps"
+            ],
+            "title": "Device",
+            "type": "string"
+          },
+          "kpt_thr": {
+            "default": 0.3,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Kpt Thr",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "model": {
+            "default": "human",
+            "enum": [
+              "human",
+              "wholebody",
+              "hand",
+              "human3d"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "session": {
+            "title": "Session",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "session"
+        ],
+        "title": "CreateRunRequest",
+        "type": "object"
+      },
       "DailyUploadCount": {
         "properties": {
           "date": {
@@ -17,6 +64,34 @@
           "uploads"
         ],
         "title": "DailyUploadCount",
+        "type": "object"
+      },
+      "EngineStatus": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "device": {
+            "title": "Device",
+            "type": "string"
+          },
+          "torch_installed": {
+            "title": "Torch Installed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available",
+          "device",
+          "torch_installed",
+          "detail"
+        ],
+        "title": "EngineStatus",
         "type": "object"
       },
       "FileMetadata": {
@@ -294,6 +369,62 @@
         "title": "FileUploadResponse",
         "type": "object"
       },
+      "FrameKeypoints": {
+        "description": "One source frame and the artifacts extraction derived from it.",
+        "properties": {
+          "frame": {
+            "title": "Frame",
+            "type": "string"
+          },
+          "keypoints_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keypoints Key"
+          },
+          "mean_score": {
+            "default": 0.0,
+            "title": "Mean Score",
+            "type": "number"
+          },
+          "num_instances": {
+            "default": 0,
+            "title": "Num Instances",
+            "type": "integer"
+          },
+          "num_keypoints": {
+            "default": 0,
+            "title": "Num Keypoints",
+            "type": "integer"
+          },
+          "overlay_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlay Key"
+          },
+          "source_key": {
+            "title": "Source Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "frame",
+          "source_key"
+        ],
+        "title": "FrameKeypoints",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -305,6 +436,154 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LibraryStage": {
+        "properties": {
+          "object_count": {
+            "title": "Object Count",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "total_bytes_human": {
+            "title": "Total Bytes Human",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage",
+          "object_count",
+          "total_bytes",
+          "total_bytes_human"
+        ],
+        "title": "LibraryStage",
+        "type": "object"
+      },
+      "LibrarySummary": {
+        "description": "Scoped Library explorer: objects under the sample prefix, by stage.",
+        "properties": {
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryStage"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "total_bytes": {
+            "default": 0,
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "total_bytes_human": {
+            "default": "0.0 B",
+            "title": "Total Bytes Human",
+            "type": "string"
+          },
+          "total_objects": {
+            "default": 0,
+            "title": "Total Objects",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prefix"
+        ],
+        "title": "LibrarySummary",
+        "type": "object"
+      },
+      "PoseStats": {
+        "description": "Dashboard metrics \u2014 the write-amplification headline plus run counts.",
+        "properties": {
+          "activity": {
+            "items": {
+              "$ref": "#/components/schemas/RunActivityPoint"
+            },
+            "title": "Activity",
+            "type": "array"
+          },
+          "amplification_ratio": {
+            "default": 0.0,
+            "title": "Amplification Ratio",
+            "type": "number"
+          },
+          "derived_bytes": {
+            "default": 0,
+            "title": "Derived Bytes",
+            "type": "integer"
+          },
+          "derived_bytes_human": {
+            "default": "0.0 B",
+            "title": "Derived Bytes Human",
+            "type": "string"
+          },
+          "frames_available": {
+            "default": 0,
+            "title": "Frames Available",
+            "type": "integer"
+          },
+          "frames_processed": {
+            "default": 0,
+            "title": "Frames Processed",
+            "type": "integer"
+          },
+          "runs_done": {
+            "default": 0,
+            "title": "Runs Done",
+            "type": "integer"
+          },
+          "runs_error": {
+            "default": 0,
+            "title": "Runs Error",
+            "type": "integer"
+          },
+          "runs_running": {
+            "default": 0,
+            "title": "Runs Running",
+            "type": "integer"
+          },
+          "sessions": {
+            "default": 0,
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "source_bytes": {
+            "default": 0,
+            "title": "Source Bytes",
+            "type": "integer"
+          },
+          "source_bytes_human": {
+            "default": "0.0 B",
+            "title": "Source Bytes Human",
+            "type": "string"
+          },
+          "total_instances": {
+            "default": 0,
+            "title": "Total Instances",
+            "type": "integer"
+          },
+          "total_keypoints": {
+            "default": 0,
+            "title": "Total Keypoints",
+            "type": "integer"
+          },
+          "total_runs": {
+            "default": 0,
+            "title": "Total Runs",
+            "type": "integer"
+          }
+        },
+        "title": "PoseStats",
         "type": "object"
       },
       "PresignUploadRequest": {
@@ -371,6 +650,235 @@
           "expires_in"
         ],
         "title": "PresignUploadResponse",
+        "type": "object"
+      },
+      "RunActivityPoint": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "runs"
+        ],
+        "title": "RunActivityPoint",
+        "type": "object"
+      },
+      "RunRecord": {
+        "description": "The full persisted run manifest.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "device": {
+            "enum": [
+              "auto",
+              "cpu",
+              "cuda",
+              "mps"
+            ],
+            "title": "Device",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/components/schemas/FrameKeypoints"
+            },
+            "title": "Frames",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kpt_thr": {
+            "title": "Kpt Thr",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "manifest_key": {
+            "title": "Manifest Key",
+            "type": "string"
+          },
+          "model": {
+            "enum": [
+              "human",
+              "wholebody",
+              "hand",
+              "human3d"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "session": {
+            "title": "Session",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RunSummary"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "session",
+          "model",
+          "device",
+          "kpt_thr",
+          "status",
+          "created_at",
+          "updated_at",
+          "manifest_key"
+        ],
+        "title": "RunRecord",
+        "type": "object"
+      },
+      "RunSummary": {
+        "description": "Aggregate metrics for a finished run \u2014 the write-amplification story.",
+        "properties": {
+          "amplification_ratio": {
+            "default": 0.0,
+            "title": "Amplification Ratio",
+            "type": "number"
+          },
+          "derived_bytes": {
+            "default": 0,
+            "title": "Derived Bytes",
+            "type": "integer"
+          },
+          "frame_count": {
+            "default": 0,
+            "title": "Frame Count",
+            "type": "integer"
+          },
+          "source_bytes": {
+            "default": 0,
+            "title": "Source Bytes",
+            "type": "integer"
+          },
+          "total_instances": {
+            "default": 0,
+            "title": "Total Instances",
+            "type": "integer"
+          },
+          "total_keypoints": {
+            "default": 0,
+            "title": "Total Keypoints",
+            "type": "integer"
+          }
+        },
+        "title": "RunSummary",
+        "type": "object"
+      },
+      "SessionInfo": {
+        "description": "Populates the create-form session Select.",
+        "properties": {
+          "frame_count": {
+            "title": "Frame Count",
+            "type": "integer"
+          },
+          "session": {
+            "title": "Session",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session",
+          "frame_count"
+        ],
+        "title": "SessionInfo",
+        "type": "object"
+      },
+      "UpdateRunRequest": {
+        "description": "Re-config is a new run, so the source session is intentionally fixed.",
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          }
+        },
+        "title": "UpdateRunRequest",
         "type": "object"
       },
       "UploadStats": {
@@ -463,12 +971,55 @@
     }
   },
   "info": {
-    "description": "Local API for the Vibe Coding Starter Kit template, providing file upload and management backed by Backblaze B2. This contract documents the template's local API, not a hosted public endpoint.",
-    "title": "Vibe Coding Starter Kit API",
+    "description": "Local API for MMPose Video Keypoint Extraction: ingest video/frame sessions to Backblaze B2, run the on-device MMPose engine to extract 2D/3D skeleton keypoints, and write per-frame keypoint JSON, skeleton-overlay PNGs, and a keypoints_index.jsonl dataset manifest back to B2. This contract documents the local API, not a hosted public endpoint.",
+    "title": "MMPose Video Keypoint Extraction API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/engine/status": {
+      "get": {
+        "operationId": "engine_status_endpoint_engine_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "device",
+            "required": false,
+            "schema": {
+              "default": "auto",
+              "title": "Device",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Engine Status Endpoint",
+        "tags": [
+          "engine"
+        ]
+      }
+    },
     "/files": {
       "get": {
         "operationId": "list_files_endpoint_files_get",
@@ -980,6 +1531,27 @@
         ]
       }
     },
+    "/library": {
+      "get": {
+        "operationId": "library_endpoint_library_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarySummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Library Endpoint",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
     "/metrics": {
       "get": {
         "operationId": "metrics_metrics_get",
@@ -996,6 +1568,334 @@
         "summary": "Metrics",
         "tags": [
           "metrics"
+        ]
+      }
+    },
+    "/runs": {
+      "get": {
+        "operationId": "list_runs_endpoint_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunRecord"
+                  },
+                  "title": "Response List Runs Endpoint Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Runs Endpoint",
+        "tags": [
+          "runs"
+        ]
+      },
+      "post": {
+        "operationId": "create_run_endpoint_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Run Endpoint",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/runs/{run_id}": {
+      "delete": {
+        "operationId": "delete_run_endpoint_runs__run_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Run Endpoint",
+        "tags": [
+          "runs"
+        ]
+      },
+      "get": {
+        "operationId": "get_run_endpoint_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Endpoint",
+        "tags": [
+          "runs"
+        ]
+      },
+      "patch": {
+        "operationId": "update_run_endpoint_runs__run_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Run Endpoint",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/runs/{run_id}/execute": {
+      "post": {
+        "operationId": "execute_run_endpoint_runs__run_id__execute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Execute Run Endpoint",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/sessions": {
+      "get": {
+        "operationId": "list_sessions_endpoint_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionInfo"
+                  },
+                  "title": "Response List Sessions Endpoint Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Sessions Endpoint",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/sessions/{session}/frames": {
+      "get": {
+        "operationId": "session_frames_endpoint_sessions__session__frames_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Session Frames Endpoint Sessions  Session  Frames Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Session Frames Endpoint",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/stats/pose": {
+      "get": {
+        "operationId": "pose_stats_endpoint_stats_pose_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoseStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pose Stats Endpoint",
+        "tags": [
+          "runs"
         ]
       }
     },

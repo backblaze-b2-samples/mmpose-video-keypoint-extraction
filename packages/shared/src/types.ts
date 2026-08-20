@@ -71,3 +71,111 @@ export interface UploadStats {
   uploads_today: number;
   total_downloads: number;
 }
+
+// ---- MMPose keypoint-extraction domain ----------------------------------
+
+export type RunStatus = "pending" | "running" | "done" | "error";
+export type ModelName = "human" | "wholebody" | "hand" | "human3d";
+export type DeviceChoice = "auto" | "cpu" | "cuda" | "mps";
+
+export interface FrameKeypoints {
+  frame: string;
+  source_key: string;
+  keypoints_key: string | null;
+  overlay_key: string | null;
+  num_instances: number;
+  num_keypoints: number;
+  mean_score: number;
+}
+
+export interface RunSummary {
+  frame_count: number;
+  total_instances: number;
+  total_keypoints: number;
+  source_bytes: number;
+  derived_bytes: number;
+  amplification_ratio: number;
+}
+
+/** The primary entity — persisted as a B2 JSON manifest, no database. */
+export interface RunRecord {
+  id: string;
+  label: string;
+  session: string;
+  model: ModelName;
+  device: DeviceChoice;
+  kpt_thr: number;
+  status: RunStatus;
+  created_at: string;
+  updated_at: string;
+  notes: string;
+  tags: string[];
+  manifest_key: string;
+  error: string | null;
+  frames: FrameKeypoints[];
+  summary: RunSummary;
+}
+
+export interface CreateRunRequest {
+  label: string;
+  session: string;
+  model: ModelName;
+  kpt_thr: number;
+  device: DeviceChoice;
+}
+
+export interface UpdateRunRequest {
+  label?: string;
+  notes?: string;
+  tags?: string[];
+}
+
+export interface SessionInfo {
+  session: string;
+  frame_count: number;
+}
+
+export interface EngineStatus {
+  available: boolean;
+  device: string;
+  torch_installed: boolean;
+  detail: string;
+}
+
+export interface RunActivityPoint {
+  date: string;
+  runs: number;
+}
+
+export interface PoseStats {
+  total_runs: number;
+  runs_done: number;
+  runs_running: number;
+  runs_error: number;
+  sessions: number;
+  frames_available: number;
+  frames_processed: number;
+  total_instances: number;
+  total_keypoints: number;
+  source_bytes: number;
+  derived_bytes: number;
+  source_bytes_human: string;
+  derived_bytes_human: string;
+  amplification_ratio: number;
+  activity: RunActivityPoint[];
+}
+
+export interface LibraryStage {
+  stage: string;
+  object_count: number;
+  total_bytes: number;
+  total_bytes_human: string;
+}
+
+export interface LibrarySummary {
+  prefix: string;
+  stages: LibraryStage[];
+  total_objects: number;
+  total_bytes: number;
+  total_bytes_human: string;
+}
